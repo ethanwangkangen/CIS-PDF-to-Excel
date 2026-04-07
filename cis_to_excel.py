@@ -55,8 +55,8 @@ with open(cistext, 'r', encoding='utf-8') as filer:
 #-------------------------------------------------------
 				
 
-flagStart, flagDesc, flagAudit, flagRecom, flagComplete = False, False, False, False, False
-cis_title, cis_desc, cis_audit, cis_recom = "","","",""
+flagStart, flagLevel, flagDesc, flagAudit, flagRecom, flagComplete = False, False, False, False, False, False
+cis_title, cis_level, cis_desc, cis_audit, cis_recom = "","","","",""
 listObj = []
 
 
@@ -70,14 +70,26 @@ with open("temp.txt", 'r', encoding='utf-8') as filer:
 			x = {} #json object
 			if re.match(r"^[0-9]\.[0-9]", line):
 				# flagStart = True		# identified CIS title			
-				cis_title, cis_desc, cis_audit, cis_recom = line,"","",""
-				flagStart, flagDesc, flagAudit, flagRecom, flagComplete = True, False, False, False, False
+				cis_title, cis_level, cis_desc, cis_audit, cis_recom = line,"","","",""
+				flagStart, flagLevel, flagDesc, flagAudit, flagRecom, flagComplete = True, False, False, False, False, False
 				# cis_title, cis_desc, cis_audit, cis_recom = "","","",""
 
 			if flagStart:
+				# Get Level
+				if "Profile Applicability:" in line:
+					flagLevel = True
+
+				if flagLevel:
+					if "Profile Applicability:" in line:
+						continue
+					cis_level += line
+					flagLevel = False
+				
+
 				# Get description - capture everything between 'Description:' and 'Rationale:'
 				if "Description:" in line:	
 					flagDesc = True
+					flagLevel = False
 					
 				if flagDesc:
 					if "Description:" in line:
@@ -119,6 +131,7 @@ with open("temp.txt", 'r', encoding='utf-8') as filer:
 
 				if flagComplete:
 					cis_title = cis_title.replace('\n','')
+					cis_level = cis_level.replace('\n', '')
 					cis_desc = cis_desc.replace('\n','')
 					cis_desc = cis_desc.replace('Rationale:','')
 					cis_desc = cis_desc.replace('| P a g e','')
@@ -131,12 +144,22 @@ with open("temp.txt", 'r', encoding='utf-8') as filer:
 					cis_recom = cis_recom.replace('References:','')
 					cis_recom = cis_recom.replace('| P a g e','')
 
-					x['title'] = cis_title
+					#x['title'] = cis_title
+					match = re.match(r"^(\d+(?:\.\d+)*)\s+(.*)", cis_title.strip())
+
+					if match:
+						x['number'] = match.group(1)
+						x['title'] = match.group(2)
+					else:
+						x['number'] = ""
+						x['title'] = cis_title.strip()
+						
+					x['level'] = cis_level
 					x['description'] = cis_desc
 					x['audit'] = cis_audit
 					x['recommendations'] = cis_recom
 					# print(x)
-					cis_title, cis_desc, cis_audit, cis_recom = "","","",""
+					cis_title, cis_level, cis_desc, cis_audit, cis_recom = "","","","",""
 					flagStart = False
 					# parsed = json.loads(x)
 					# print(json.dumps(x, indent=4))
